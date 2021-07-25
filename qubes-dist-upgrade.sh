@@ -17,27 +17,27 @@ echo "Usage: $0 [OPTIONS]...
 This script is used for updating current QubesOS R4.0 to R4.1.
 
 Options:
-    --double-metadata-size          (STAGE 0) Double current LVM thin pool metadata size.
-    --update                        (STAGE 1) Update of dom0, TemplatesVM and StandaloneVM.
-    --template-standalone-upgrade   (STAGE 2) Upgrade templates and standalone VMs to R4.1 repository.
-    --release-upgrade               (STAGE 3) Update 'qubes-release' for Qubes R4.1.
-    --dist-upgrade                  (STAGE 4) Upgrade to Qubes R4.1 and Fedora 32 repositories.
-    --setup-efi-grub                (STAGE 5) Setup EFI Grub.
-    --all                           Execute all the above stages in one call.
+    --double-metadata-size, -d         (STAGE 0) Double current LVM thin pool metadata size.
+    --update, -t                       (STAGE 1) Update of dom0, TemplatesVM and StandaloneVM.
+    --template-standalone-upgrade, -l  (STAGE 2) Upgrade templates and standalone VMs to R4.1 repository.
+    --release-upgrade, -r              (STAGE 3) Update 'qubes-release' for Qubes R4.1.
+    --dist-upgrade, -s                 (STAGE 4) Upgrade to Qubes R4.1 and Fedora 32 repositories.
+    --setup-efi-grub, -g               (STAGE 5) Setup EFI Grub.
+    --all, -a                          Execute all the above stages in one call.
 
-    --assumeyes                     Automatically answer yes for all questions.
-    --usbvm                         Current UsbVM defined (default 'sys-usb').
-    --netvm                         Current NetVM defined (default 'sys-net').
-    --updatevm                      Current UpdateVM defined (default 'sys-firewall').
-    --skip-template-upgrade         Don't upgrade TemplateVM to R4.1 repositories.
-    --skip-standalone-upgrade       Don't upgrade StandaloneVM to R4.1 repositories.
-    --only-update                   Apply STAGE 0, 2 and resync appmenus only to
-                                    selected qubes (coma separated list).
-    --max-concurrency               How many TemplateVM/StandaloneVM to update in parallel in STAGE 1
-                                    (default 4).
-    
-    --resync-appmenus-features      Resync applications and features. To be ran individually
-                                    after reboot.
+    --assumeyes, -y                    Automatically answer yes for all questions.
+    --usbvm, -u                        Current UsbVM defined (default 'sys-usb').
+    --netvm, -n                        Current NetVM defined (default 'sys-net').
+    --updatevm, -f                     Current UpdateVM defined (default 'sys-firewall').
+    --skip-template-upgrade, -j        Don't upgrade TemplateVM to R4.1 repositories.
+    --skip-standalone-upgrade, -k      Don't upgrade StandaloneVM to R4.1 repositories.
+    --only-update                      Apply STAGE 0, 2 and resync appmenus only to
+                                       selected qubes (coma separated list).
+    --max-concurrency                  How many TemplateVM/StandaloneVM to update in parallel in STAGE 1
+                                       (default 4).
+
+    --resync-appmenus-features         Resync applications and features. To be ran individually
+                                       after reboot.
 "
     exit 1
 }
@@ -446,7 +446,7 @@ if [[ $EUID -ne 0 ]]; then
    exit 1
 fi
 
-if ! OPTS=$(getopt -o htrlsgydu:n:f:jkp --long help,all,update,template-standalone-upgrade,release-upgrade,dist-upgrade,setup-efi-grub,assumeyes,double-metadata-size,usbvm:,netvm:,updatevm:skip-template-upgrade,skip-standalone-upgrade,resync-appmenus-features,only-update:,max-concurrency: -n "$0" -- "$@"); then
+if ! OPTS=$(getopt -o htrlsgydu:n:f:jkp --long help,all,update,template-standalone-upgrade,release-upgrade,dist-upgrade,setup-efi-grub,assumeyes,double-metadata-size,usbvm:,netvm:,updatevm:,skip-template-upgrade,skip-standalone-upgrade,resync-appmenus-features,only-update:,max-concurrency: -n "$0" -- "$@"); then
     echo "ERROR: Failed while parsing options."
     exit 1
 fi
@@ -460,20 +460,20 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         -h | --help) usage ;;
         -a | --all)
+            double_metadata_size=1
             update=1
             template_standalone_upgrade=1
             release_upgrade=1
             dist_upgrade=1
             update_grub=1
-            double_metadata_size=1
             ;;
+        -d | --double-metadata-size ) double_metadata_size=1;;
         -t | --update ) update=1;;
-        -r | --release-upgrade) release_upgrade=1;;
         -l | --template-standalone-upgrade) template_standalone_upgrade=1;;
+        -r | --release-upgrade) release_upgrade=1;;
         -s | --dist-upgrade ) dist_upgrade=1;;
         -g | --setup-efi-grub ) update_grub=1;;
         -y | --assumeyes ) assumeyes=1;;
-        -d | --double-metadata-size ) double_metadata_size=1;;
         -u | --usbvm ) usbvm="$2"; shift ;;
         -n | --netvm ) netvm="$2"; shift ;;
         -f | --updatevm ) updatevm="$2"; shift ;;
@@ -506,7 +506,7 @@ if [ "$resync_appmenus_features" == 1 ]; then
     if [ "$skip_template_upgrade" != 1 ]; then
         mapfile -t template_vms < <(for vm in $(qvm-ls --raw-list --fields name); do if qvm-check -q --template "$vm"; then echo "$vm"; fi; done 2>/dev/null)
     fi
-    if [ "$skip_template_upgrade" != 1 ]; then
+    if [ "$skip_standalone_upgrade" != 1 ]; then
         mapfile -t standalone_vms < <(for vm in $(qvm-ls --raw-list --fields name); do if qvm-check -q --standalone "$vm"; then echo "$vm"; fi; done 2>/dev/null)
     fi
     if [ "$skip_template_upgrade" != 1 ] || [ "$skip_standalone_upgrade" != 1 ]; then
@@ -592,7 +592,7 @@ if [ "$assumeyes" == "1" ] || confirm "-> Launch upgrade process?"; then
         if [ "$skip_template_upgrade" != 1 ]; then
             mapfile -t template_vms < <(for vm in $(qvm-ls --raw-list --fields name); do if qvm-check -q --template "$vm"; then echo "$vm"; fi; done 2>/dev/null)
         fi
-        if [ "$skip_template_upgrade" != 1 ]; then
+        if [ "$skip_standalone_upgrade" != 1 ]; then
             mapfile -t standalone_vms < <(for vm in $(qvm-ls --raw-list --fields name); do if qvm-check -q --standalone "$vm"; then echo "$vm"; fi; done 2>/dev/null)
         fi
         if [ "$skip_template_upgrade" != 1 ] || [ "$skip_standalone_upgrade" != 1 ]; then
